@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-const FRAMES_DIR = '/assets/Video Frame Extractor 2025-08-26 15_25_06 GMT+7';
+const FRAMES_DIR = '/assets/videoFrame';
 const TOTAL_FRAMES = 80;
 // Inertial tuning: higher ACCEL => snappier, lower FRICTION => longer glide
 const ACCELERATION = 0.25;
