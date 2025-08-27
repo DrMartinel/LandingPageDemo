@@ -3,9 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 
 const FRAMES_DIR = '/assets/videoFrame';
 const TOTAL_FRAMES = 80;
-// Inertial tuning: higher ACCEL => snappier, lower FRICTION => longer glide
-const ACCELERATION = 0.25;
-const FRICTION = 0.85;
 
 function padFrameNumber(i){
 	return String(i).padStart(3,'0');
@@ -14,10 +11,6 @@ function padFrameNumber(i){
 export default function FramesOnScroll(){
 	const canvasRef = useRef(null);
 	const imagesRef = useRef([]);
-	const desiredIndexRef = useRef(0);
-	const currentIndexRef = useRef(0);
-	const velocityRef = useRef(0);
-	const rafRef = useRef(null);
 	const [loaded, setLoaded] = useState(false);
 
 	useEffect(() => {
@@ -44,17 +37,15 @@ export default function FramesOnScroll(){
 			context.setTransform(ratio,0,0,ratio,0,0);
 		};
 
-		const computeDesiredFromScroll = () => {
+		const render = () => {
 			const section = document.getElementById('feature-frames');
 			const rect = section.getBoundingClientRect();
 			const total = rect.height - window.innerHeight;
 			const scrolled = Math.min(Math.max(-rect.top, 0), total);
 			const progress = total>0 ? scrolled/total : 0;
-			return Math.min(TOTAL_FRAMES-1, Math.floor(progress*(TOTAL_FRAMES-1)));
-		};
-
-		const drawIndex = (index) => {
-			const image = imagesRef.current[Math.round(index)];
+			const frameIndex = Math.min(TOTAL_FRAMES-1, Math.floor(progress*(TOTAL_FRAMES-1)));
+			
+			const image = imagesRef.current[frameIndex];
 			if(!image) return;
 			const { width: cw, height: ch } = canvas.getBoundingClientRect();
 			context.clearRect(0,0,cw,ch);
@@ -65,27 +56,17 @@ export default function FramesOnScroll(){
 			context.drawImage(image, dx, dy, dw, dh);
 		};
 
-		const tick = () => {
-			// Update desired index from scroll
-			desiredIndexRef.current = computeDesiredFromScroll();
-			// Spring-like acceleration towards desired
-			const error = desiredIndexRef.current - currentIndexRef.current;
-			velocityRef.current += error * ACCELERATION;
-			velocityRef.current *= FRICTION;
-			currentIndexRef.current += velocityRef.current;
-			// Clamp to bounds and damp tiny velocity
-			if(currentIndexRef.current < 0){ currentIndexRef.current = 0; velocityRef.current = 0; }
-			if(currentIndexRef.current > TOTAL_FRAMES-1){ currentIndexRef.current = TOTAL_FRAMES-1; velocityRef.current = 0; }
-			if(Math.abs(velocityRef.current) < 0.001) velocityRef.current = 0;
-			drawIndex(currentIndexRef.current);
-			rafRef.current = requestAnimationFrame(tick);
-		};
-
-		const onResize = () => { resize(); };
+		const onScroll = () => requestAnimationFrame(render);
+		const onResize = () => { resize(); render(); };
+		
 		resize();
-		tick();
+		render();
+		window.addEventListener('scroll', onScroll);
 		window.addEventListener('resize', onResize);
-		return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', onResize); };
+		return () => { 
+			window.removeEventListener('scroll', onScroll); 
+			window.removeEventListener('resize', onResize); 
+		};
 	},[loaded]);
 
 	return (
